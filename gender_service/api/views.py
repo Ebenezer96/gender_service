@@ -3,17 +3,21 @@ from datetime import datetime, timezone
 import requests
 from requests.exceptions import RequestException
 from rest_framework import status
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 
 class ClassifyNameView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
     def get(self, request):
         name_values = request.GET.getlist("name")
 
         if not name_values:
             return Response(
-                {"status": "error", "message": "Missing name parameter"},
+                {"status": "error", "message": "Name query parameter is required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -25,7 +29,7 @@ class ClassifyNameView(APIView):
 
         name = name_values[0]
 
-        if name is None or not isinstance(name, str):
+        if not isinstance(name, str):
             return Response(
                 {"status": "error", "message": "name must be a string"},
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -35,7 +39,7 @@ class ClassifyNameView(APIView):
 
         if not name:
             return Response(
-                {"status": "error", "message": "Missing or empty name parameter"},
+                {"status": "error", "message": "Name query parameter is required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -62,10 +66,10 @@ class ClassifyNameView(APIView):
         probability = payload.get("probability")
         count = payload.get("count")
 
-        if gender is None or count == 0:
+        if gender is None or count is None:
             return Response(
                 {"status": "error", "message": "No prediction available for the provided name"},
-                status=status.HTTP_200_OK,
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
 
         try:
@@ -75,6 +79,12 @@ class ClassifyNameView(APIView):
             return Response(
                 {"status": "error", "message": "Invalid response from upstream service"},
                 status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        if sample_size <= 0:
+            return Response(
+                {"status": "error", "message": "No prediction available for the provided name"},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
 
         processed_at = (
